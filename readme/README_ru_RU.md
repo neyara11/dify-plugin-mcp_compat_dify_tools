@@ -106,6 +106,7 @@ English version: [README.md](../README.md)
 
 На основе [junjiem/mcp_compat_dify_tools](https://github.com/junjiem/dify-plugin-mcp_compat_dify_tools) 0.1.1. Исправлено:
 
+- 0.2.3: настройка endpoint'а `settings_overrides` — JSON-карта `{"tool_name": {"param": "value"}}` с настройками тулов (например, кредами), которая подставляется при каждом вызове. Обходной путь для Dify ≤1.13.3, где сломан диалог настроек тула (см. FAQ).
 - 0.2.2: `inputSchema` заполняется для конфигов тулов, сохранённых Dify 1.6+ — актуальный фронтенд Dify больше не хранит определения параметров (`schemas`) в конфиге endpoint'а, поэтому имена параметров теперь берутся из карт значений `parameters`/`settings` (типы фолбэчатся в `string`); зафиксированные значения остаются скрытыми и подставляются при вызове.
 - 0.2.1: `tools/list` больше не падает из-за неполных конфигов тулов — отсутствующие `type`/`tool_label` получают значения по умолчанию, сломанные схемы параметров пропускаются с записью в лог сервера, а не роняют весь список; полные трейсбеки ошибок `tools/list`/`tools/call` пишутся в лог сервера.
 - 0.2.0: удалён debug-вывод, который печатался поверх JSON-ответа и ломал `tools/call` в plugin daemon ([#7](https://github.com/junjiem/dify-plugin-mcp_compat_dify_tools/issues/7), [#9](https://github.com/junjiem/dify-plugin-mcp_compat_dify_tools/issues/9)).
@@ -149,8 +150,9 @@ English version: [README.md](../README.md)
 
 ### FAQ: окно настроек тула открывается затемнённым за панелью endpoint'а
 
-Это известный баг веб-интерфейса Dify (наложение z-index у вложенных модалок в процессе миграции overlay-компонентов, см. [langgenius/dify#33574](https://github.com/langgenius/dify/issues/33574) и [langgenius/dify#34803](https://github.com/langgenius/dify/issues/34803)), а не баг плагина. Исправления вошли в Dify после версии 1.13.3 — обновите инстанс.
+Это известный баг веб-интерфейса Dify (наложение z-index у вложенных модалок в процессе миграции overlay-компонентов, см. [langgenius/dify#33574](https://github.com/langgenius/dify/issues/33574) и [langgenius/dify#34803](https://github.com/langgenius/dify/issues/34803)), а не баг плагина. Исправления вошли в Dify после версии 1.13.3 — обновление инстанса решает вопрос окончательно.
 
-Обходные пути без обновления:
-- Диалог необязателен: включённые тулы отдаются в MCP и без индивидуальной настройки. Оставьте значения settings пустыми и передавайте их при вызове как аргументы MCP — незаданные settings-параметры попадают во входную схему.
-- Временный хак: откройте DevTools консоль браузера, когда затемнённый диалог появился, и поднимите его слой: `document.querySelectorAll('[role="dialog"], .fixed').forEach(el => el.style.zIndex = 10000)`
+Обходные пути без обновления (диалог в любом случае необязателен):
+- Оставьте значения settings пустыми и передавайте их при вызове как аргументы MCP — незаданные settings-параметры попадают во входную схему.
+- Чтобы зафиксировать значения (например, креды) без диалога, используйте настройку endpoint'а **Settings presets (JSON)**: `{"tool_name": {"param": "value"}}` — подставляется при каждом вызове и скрыто из MCP-схемы.
+- Чтобы сделать диалог кликабельным временно, откройте консоль DevTools, когда он появился, и поднимите слои: `[...document.querySelectorAll('[role="dialog"], .fixed')].forEach((el, i) => el.style.zIndex = 1000 + i)`

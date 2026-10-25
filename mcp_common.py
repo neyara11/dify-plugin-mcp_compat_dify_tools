@@ -13,7 +13,7 @@ from dify_plugin.interfaces.agent import AgentToolIdentity, ToolEntity
 from werkzeug import Request, Response
 
 SERVER_NAME = "MCP Compatible Dify Tools"
-SERVER_VERSION = "0.2.2"
+SERVER_VERSION = "0.2.3"
 SUPPORTED_PROTOCOL_VERSIONS = ("2024-11-05", "2025-03-26", "2025-06-18", "2025-11-25")
 DEFAULT_PROTOCOL_VERSION = "2025-03-26"
 
@@ -80,7 +80,7 @@ def handle_rpc(session: Any, data: Mapping, settings: Mapping) -> dict:
         return rpc_result(rpc_id, {})
     if method == "tools/list":
         try:
-            tools = init_tools(settings.get("tools"))
+            tools = init_tools(settings)
             return rpc_result(rpc_id, {"tools": init_mcp_tools(tools)})
         except Exception as e:
             logging.exception("tools/list failed")
@@ -93,7 +93,7 @@ def handle_rpc(session: Any, data: Mapping, settings: Mapping) -> dict:
 def tools_call_response(session: Any, data: Mapping, settings: Mapping) -> dict:
     rpc_id = data.get("id")
     try:
-        tools = init_tools(settings.get("tools"))
+        tools = init_tools(settings)
         tool_map = build_tool_map(tools)
 
         params = data.get("params") or {}
@@ -174,11 +174,38 @@ def synthesize_parameter_schemas(
     return schemas
 
 
-def init_tools(tools_param_value: Any) -> list[ToolEntity]:
+def parse_settings_overrides(raw: Any) -> dict[str, dict[str, Any]]:
+    if not raw:
+        return {}
+
+    if isinstance(raw, Mapping):
+        candidate = raw
+    else:
+        try:
+            candidate = json.loads(raw)
+        except Exception:
+            logging.warning("settings_overrides is not valid JSON, ignored")
+            return {}
+
+    if not isinstance(candidate, Mapping):
+        logging.warning("settings_overrides must be a JSON object, ignored")
+        return {}
+
+    result: dict[str, dict[str, Any]] = {}
+    for tool_name, values in candidate.items():
+        if isinstance(values, Mapping):
+            result[str(tool_name)] = dict(values)
+        else:
+            logging.warning("settings_overrides entry for %s is not an object, ignored", tool_name)
+    return result
+
+
+def init_tools(settings: Mapping) -> list[ToolEntity]:
     result: list[ToolEntity] = []
 
-    value = cast(list[dict[str, Any]], tools_param_value or [])
+    value = cast(list[dict[str, Any]], settings.get("tools") or [])
     value = [tool for tool in value if isinstance(tool, dict) and tool.get("enabled", False)]
+    overrides = parse_settings_overrides(settings.get("settings_overrides"))
 
     for tool in value:
         tool_name = tool.get("tool_name")
@@ -193,7 +220,7 @@ def init_tools(tools_param_value: Any) -> list[ToolEntity]:
             tool_description = tool.get("tool_description", None)
             extra_description = (tool.get("extra") or {}).get("description", None)
             schemas = tool.get("schemas") or []
-            settings = tool.get("settings") or {}
+            tool_settings = tool.get("settings") or {}
             parameter_values = tool.get("parameters") or {}
 
             identity = AgentToolIdentity(
@@ -220,14 +247,14 @@ def init_tools(tools_param_value: Any) -> list[ToolEntity]:
                 provider_type = ToolProviderType.WORKFLOW
 
             runtime_parameters = {}
-            for parameter_name, parameter_value in settings.items():
+            for parameter_name, parameter_value in tool_settings.items():
                 if isinstance(parameter_value, dict):
                     runtime_parameters[parameter_name] = parameter_value.get("value")
                 else:
                     runtime_parameters[parameter_name] = parameter_value
 
             if not schemas:
-                schemas = synthesize_parameter_schemas(parameter_values, settings)
+                schemas = synthesize_parameter_schemas(parameter_values, tool_settings)
                 for parameter_name, parameter_value in parameter_values.items():
                     if isinstance(parameter_value, dict):
                         preset = parameter_value.get("value")
@@ -235,6 +262,8 @@ def init_tools(tools_param_value: Any) -> list[ToolEntity]:
                         preset = parameter_value
                     if preset is not None:
                         runtime_parameters[parameter_name] = preset
+
+            runtime_parameters.update(overrides.get(tool_name) or {})
 
             parameters = []
             for schema in schemas:

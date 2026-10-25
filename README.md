@@ -106,6 +106,7 @@ The optional **Auth token** endpoint setting protects all endpoint URLs. If set,
 
 Based on [junjiem/mcp_compat_dify_tools](https://github.com/junjiem/dify-plugin-mcp_compat_dify_tools) 0.1.1. Fixes:
 
+- 0.2.3: `settings_overrides` endpoint setting — a JSON map `{"tool_name": {"param": "value"}}` of tool settings (e.g. credentials) injected on every call. Workaround for Dify ≤1.13.3 where the per-tool settings dialog is broken (see FAQ).
 - 0.2.2: `inputSchema` is populated for tool configs saved by Dify 1.6+ — the current Dify frontend no longer stores parameter definitions (`schemas`) in the endpoint config, so parameter names are now taken from the stored `parameters`/`settings` value maps (types fall back to `string`); preset values stay fixed and are injected on call.
 - 0.2.1: `tools/list` no longer dies on incomplete tool configs — missing `type`/`tool_label` fields get defaults, broken parameter schemas are skipped with a server-side log instead of failing the whole list; full tracebacks are logged server-side for `tools/list`/`tools/call` errors.
 - 0.2.0: removed debug output that was printed over the JSON response and broke `tools/call` in the plugin daemon ([#7](https://github.com/junjiem/dify-plugin-mcp_compat_dify_tools/issues/7), [#9](https://github.com/junjiem/dify-plugin-mcp_compat_dify_tools/issues/9)).
@@ -149,8 +150,9 @@ For a true offline package (dependencies bundled, no internet needed), see [junj
 
 ### FAQ: the per-tool settings dialog opens dimmed behind the endpoint panel
 
-This is a known Dify console UI bug (nested modal z-index stacking during Dify's overlay component migration, see [langgenius/dify#33574](https://github.com/langgenius/dify/issues/33574) and [langgenius/dify#34803](https://github.com/langgenius/dify/issues/34803)), not a plugin bug. Fixes landed in Dify after 1.13.3 — upgrade your Dify instance.
+This is a known Dify console UI bug (nested modal z-index stacking during Dify's overlay component migration, see [langgenius/dify#33574](https://github.com/langgenius/dify/issues/33574) and [langgenius/dify#34803](https://github.com/langgenius/dify/issues/34803)), not a plugin bug. Fixes landed in Dify after 1.13.3 — upgrading your Dify instance resolves it permanently.
 
-Workarounds without upgrading:
-- The dialog is optional: enabled tools are exposed even without per-tool customization. Leave settings values unset and pass them per call as MCP arguments — unset settings parameters are exposed in the MCP input schema.
-- As a temporary hack, open the browser DevTools console after the dimmed dialog appears and raise its layer: `document.querySelectorAll('[role="dialog"], .fixed').forEach(el => el.style.zIndex = 10000)`
+Workarounds without upgrading (the dialog is optional anyway):
+- Leave settings values unset and pass them per call as MCP arguments — unset settings parameters are exposed in the MCP input schema.
+- To preset values (e.g. credentials) without the dialog, use the **Settings presets (JSON)** endpoint setting: `{"tool_name": {"param": "value"}}` — injected on every call and hidden from the MCP schema.
+- To make the dialog clickable temporarily, open the browser DevTools console after it appears and lift the layers: `[...document.querySelectorAll('[role="dialog"], .fixed')].forEach((el, i) => el.style.zIndex = 1000 + i)`

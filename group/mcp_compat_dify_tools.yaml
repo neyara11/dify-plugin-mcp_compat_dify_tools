@@ -14,6 +14,15 @@ settings:
     placeholder:
       en_US: Optional. If set, clients must pass it via Authorization Bearer header, X-Api-Key header or ?token= query parameter
       zh_Hans: 可选。设置后客户端必须通过 Authorization Bearer 头、X-Api-Key 头或 ?token= 查询参数传递
+  - name: settings_overrides
+    type: text-input
+    required: false
+    label:
+      en_US: Settings presets (JSON)
+      zh_Hans: 设置预设（JSON）
+    placeholder:
+      en_US: 'Optional JSON like {"tool_name": {"param": "value"}} — preset tool settings injected on every call, e.g. credentials. Use when the per-tool settings dialog is unavailable'
+      zh_Hans: '可选 JSON，如 {"tool_name": {"param": "value"}} — 每次调用时注入的工具设置预设（例如凭据）。当工具设置对话框不可用时使用'
 endpoints:
   - endpoints/sse.yaml
   - endpoints/messages.yaml
