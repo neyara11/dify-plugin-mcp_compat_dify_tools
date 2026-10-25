@@ -144,3 +144,11 @@ For a true offline package (dependencies bundled, no internet needed), see [junj
 - Make sure the URL matches the transport: `.../mcp` with `type: "streamable-http"`, `.../sse` with `type: "sse"`.
 - Roo Code requires an explicit `type` for URL-based servers; Kilo Code auto-detects the transport.
 - If you set `auth_token`, pass it via header or `?token=` — otherwise requests are rejected with 401.
+
+### FAQ: the per-tool settings dialog opens dimmed behind the endpoint panel
+
+This is a known Dify console UI bug (nested modal z-index stacking during Dify's overlay component migration, see [langgenius/dify#33574](https://github.com/langgenius/dify/issues/33574) and [langgenius/dify#34803](https://github.com/langgenius/dify/issues/34803)), not a plugin bug. Fixes landed in Dify after 1.13.3 — upgrade your Dify instance.
+
+Workarounds without upgrading:
+- The dialog is optional: enabled tools are exposed even without per-tool customization. Leave settings values unset and pass them per call as MCP arguments — unset settings parameters are exposed in the MCP input schema.
+- As a temporary hack, open the browser DevTools console after the dimmed dialog appears and raise its layer: `document.querySelectorAll('[role="dialog"], .fixed').forEach(el => el.style.zIndex = 10000)`
