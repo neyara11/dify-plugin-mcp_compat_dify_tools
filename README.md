@@ -106,6 +106,7 @@ The optional **Auth token** endpoint setting protects all endpoint URLs. If set,
 
 Based on [junjiem/mcp_compat_dify_tools](https://github.com/junjiem/dify-plugin-mcp_compat_dify_tools) 0.1.1. Fixes:
 
+- 0.2.2: `inputSchema` is populated for tool configs saved by Dify 1.6+ — the current Dify frontend no longer stores parameter definitions (`schemas`) in the endpoint config, so parameter names are now taken from the stored `parameters`/`settings` value maps (types fall back to `string`); preset values stay fixed and are injected on call.
 - 0.2.1: `tools/list` no longer dies on incomplete tool configs — missing `type`/`tool_label` fields get defaults, broken parameter schemas are skipped with a server-side log instead of failing the whole list; full tracebacks are logged server-side for `tools/list`/`tools/call` errors.
 - 0.2.0: removed debug output that was printed over the JSON response and broke `tools/call` in the plugin daemon ([#7](https://github.com/junjiem/dify-plugin-mcp_compat_dify_tools/issues/7), [#9](https://github.com/junjiem/dify-plugin-mcp_compat_dify_tools/issues/9)).
 - Protocol version is now negotiated with the client (echoes `2024-11-05`, `2025-03-26`, `2025-06-18`, `2025-11-25`) instead of a hard-coded `2024-11-05`.

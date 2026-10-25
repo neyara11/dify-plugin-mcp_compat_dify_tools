@@ -106,6 +106,7 @@ English version: [README.md](../README.md)
 
 На основе [junjiem/mcp_compat_dify_tools](https://github.com/junjiem/dify-plugin-mcp_compat_dify_tools) 0.1.1. Исправлено:
 
+- 0.2.2: `inputSchema` заполняется для конфигов тулов, сохранённых Dify 1.6+ — актуальный фронтенд Dify больше не хранит определения параметров (`schemas`) в конфиге endpoint'а, поэтому имена параметров теперь берутся из карт значений `parameters`/`settings` (типы фолбэчатся в `string`); зафиксированные значения остаются скрытыми и подставляются при вызове.
 - 0.2.1: `tools/list` больше не падает из-за неполных конфигов тулов — отсутствующие `type`/`tool_label` получают значения по умолчанию, сломанные схемы параметров пропускаются с записью в лог сервера, а не роняют весь список; полные трейсбеки ошибок `tools/list`/`tools/call` пишутся в лог сервера.
 - 0.2.0: удалён debug-вывод, который печатался поверх JSON-ответа и ломал `tools/call` в plugin daemon ([#7](https://github.com/junjiem/dify-plugin-mcp_compat_dify_tools/issues/7), [#9](https://github.com/junjiem/dify-plugin-mcp_compat_dify_tools/issues/9)).
 - Версия протокола теперь согласуется с клиентом (эхо `2024-11-05`, `2025-03-26`, `2025-06-18`, `2025-11-25`) вместо жёстко заданной `2024-11-05`.

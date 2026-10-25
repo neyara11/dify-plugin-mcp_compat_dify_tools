@@ -13,7 +13,7 @@ from dify_plugin.interfaces.agent import AgentToolIdentity, ToolEntity
 from werkzeug import Request, Response
 
 SERVER_NAME = "MCP Compatible Dify Tools"
-SERVER_VERSION = "0.2.1"
+SERVER_VERSION = "0.2.2"
 SUPPORTED_PROTOCOL_VERSIONS = ("2024-11-05", "2025-03-26", "2025-06-18", "2025-11-25")
 DEFAULT_PROTOCOL_VERSION = "2025-03-26"
 
@@ -135,6 +135,45 @@ def normalize_parameter_schema(schema: Mapping[str, Any]) -> dict[str, Any]:
     return normalized
 
 
+def synthesize_parameter_schemas(
+    parameter_values: Mapping[str, Any],
+    settings_values: Mapping[str, Any],
+) -> list[dict[str, Any]]:
+    schemas = []
+
+    for name, entry in parameter_values.items():
+        if not name or name.startswith("__"):
+            continue
+        value = entry.get("value") if isinstance(entry, dict) else entry
+        if value is not None:
+            continue
+        schemas.append({
+            "name": name,
+            "label": {"en_US": name},
+            "human_description": {"en_US": name},
+            "type": "string",
+            "form": "llm",
+            "required": False,
+        })
+
+    for name, entry in settings_values.items():
+        if not name or name.startswith("__"):
+            continue
+        value = entry.get("value") if isinstance(entry, dict) else entry
+        if value is not None:
+            continue
+        schemas.append({
+            "name": name,
+            "label": {"en_US": name},
+            "human_description": {"en_US": name},
+            "type": "string",
+            "form": "form",
+            "required": False,
+        })
+
+    return schemas
+
+
 def init_tools(tools_param_value: Any) -> list[ToolEntity]:
     result: list[ToolEntity] = []
 
@@ -155,6 +194,7 @@ def init_tools(tools_param_value: Any) -> list[ToolEntity]:
             extra_description = (tool.get("extra") or {}).get("description", None)
             schemas = tool.get("schemas") or []
             settings = tool.get("settings") or {}
+            parameter_values = tool.get("parameters") or {}
 
             identity = AgentToolIdentity(
                 author="Dify",
@@ -179,19 +219,29 @@ def init_tools(tools_param_value: Any) -> list[ToolEntity]:
             elif tool_type == "workflow":
                 provider_type = ToolProviderType.WORKFLOW
 
-            parameters = []
-            for schema in schemas:
-                try:
-                    parameters.append(ToolParameter(**normalize_parameter_schema(schema)))
-                except Exception:
-                    logging.exception("Skipping broken parameter schema of tool %s: %s", tool_name, schema)
-
             runtime_parameters = {}
             for parameter_name, parameter_value in settings.items():
                 if isinstance(parameter_value, dict):
                     runtime_parameters[parameter_name] = parameter_value.get("value")
                 else:
                     runtime_parameters[parameter_name] = parameter_value
+
+            if not schemas:
+                schemas = synthesize_parameter_schemas(parameter_values, settings)
+                for parameter_name, parameter_value in parameter_values.items():
+                    if isinstance(parameter_value, dict):
+                        preset = parameter_value.get("value")
+                    else:
+                        preset = parameter_value
+                    if preset is not None:
+                        runtime_parameters[parameter_name] = preset
+
+            parameters = []
+            for schema in schemas:
+                try:
+                    parameters.append(ToolParameter(**normalize_parameter_schema(schema)))
+                except Exception:
+                    logging.exception("Skipping broken parameter schema of tool %s: %s", tool_name, schema)
 
             tool_entity = ToolEntity(
                 identity=identity,
