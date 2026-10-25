@@ -102,11 +102,12 @@ The optional **Auth token** endpoint setting protects all endpoint URLs. If set,
 }
 ```
 
-## Changes in this fork (0.2.0)
+## Changes in this fork
 
 Based on [junjiem/mcp_compat_dify_tools](https://github.com/junjiem/dify-plugin-mcp_compat_dify_tools) 0.1.1. Fixes:
 
-- Removed debug output that was printed over the JSON response and broke `tools/call` in the plugin daemon ([#7](https://github.com/junjiem/dify-plugin-mcp_compat_dify_tools/issues/7), [#9](https://github.com/junjiem/dify-plugin-mcp_compat_dify_tools/issues/9)).
+- 0.2.1: `tools/list` no longer dies on incomplete tool configs — missing `type`/`tool_label` fields get defaults, broken parameter schemas are skipped with a server-side log instead of failing the whole list; full tracebacks are logged server-side for `tools/list`/`tools/call` errors.
+- 0.2.0: removed debug output that was printed over the JSON response and broke `tools/call` in the plugin daemon ([#7](https://github.com/junjiem/dify-plugin-mcp_compat_dify_tools/issues/7), [#9](https://github.com/junjiem/dify-plugin-mcp_compat_dify_tools/issues/9)).
 - Protocol version is now negotiated with the client (echoes `2024-11-05`, `2025-03-26`, `2025-06-18`, `2025-11-25`) instead of a hard-coded `2024-11-05`.
 - `select` parameters are exposed as `string` with an `enum` — previously the schema contained the invalid JSON Schema type `select`, which made strict clients reject tools.
 - Unset settings parameters can now be passed per call ([#12](https://github.com/junjiem/dify-plugin-mcp_compat_dify_tools/issues/12)).

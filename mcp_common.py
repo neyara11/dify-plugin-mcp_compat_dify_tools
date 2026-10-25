@@ -13,7 +13,7 @@ from dify_plugin.interfaces.agent import AgentToolIdentity, ToolEntity
 from werkzeug import Request, Response
 
 SERVER_NAME = "MCP Compatible Dify Tools"
-SERVER_VERSION = "0.2.0"
+SERVER_VERSION = "0.2.1"
 SUPPORTED_PROTOCOL_VERSIONS = ("2024-11-05", "2025-03-26", "2025-06-18", "2025-11-25")
 DEFAULT_PROTOCOL_VERSION = "2025-03-26"
 
@@ -83,6 +83,7 @@ def handle_rpc(session: Any, data: Mapping, settings: Mapping) -> dict:
             tools = init_tools(settings.get("tools"))
             return rpc_result(rpc_id, {"tools": init_mcp_tools(tools)})
         except Exception as e:
+            logging.exception("tools/list failed")
             return rpc_error(rpc_id, -32000, str(e))
     if method == "tools/call":
         return tools_call_response(session, data, settings)
@@ -106,68 +107,103 @@ def tools_call_response(session: Any, data: Mapping, settings: Mapping) -> dict:
         result = invoke_tool(session, tool, arguments)
         return rpc_result(rpc_id, {"content": [{"type": "text", "text": result}], "isError": False})
     except Exception as e:
+        logging.exception("tools/call failed")
         return rpc_result(
             rpc_id,
             {"content": [{"type": "text", "text": f"Tool invocation failed: {e}"}], "isError": True},
         )
 
 
+def normalize_parameter_schema(schema: Mapping[str, Any]) -> dict[str, Any]:
+    normalized = dict(schema)
+    name = normalized.get("name") or "param"
+
+    label = normalized.get("label")
+    if not isinstance(label, dict) or not label.get("en_US"):
+        normalized["label"] = {"en_US": name}
+
+    human_description = normalized.get("human_description")
+    if not isinstance(human_description, dict) or not human_description.get("en_US"):
+        normalized["human_description"] = {"en_US": name}
+
+    if not normalized.get("type"):
+        normalized["type"] = "string"
+
+    if not normalized.get("form"):
+        normalized["form"] = "llm"
+
+    return normalized
+
+
 def init_tools(tools_param_value: Any) -> list[ToolEntity]:
     result: list[ToolEntity] = []
 
     value = cast(list[dict[str, Any]], tools_param_value or [])
-    value = [tool for tool in value if tool.get("enabled", False)]
+    value = [tool for tool in value if isinstance(tool, dict) and tool.get("enabled", False)]
 
     for tool in value:
-        tool_type = tool["type"]
-        tool_name = tool["tool_name"]
-        tool_label = tool["tool_label"]
-        tool_description = tool.get("tool_description", None)
-        extra_description = tool.get("extra", {}).get("description", None)
-        provider_name = tool["provider_name"]
-        schemas = tool.get("schemas", [])
-        settings = tool.get("settings", {})
+        tool_name = tool.get("tool_name")
+        provider_name = tool.get("provider_name")
+        if not tool_name or not provider_name:
+            logging.warning("Skipping tool config without tool_name/provider_name: %s", tool)
+            continue
 
-        identity = AgentToolIdentity(
-            author="Dify",
-            name=tool_name,
-            label=I18nObject(en_US=tool_label),
-            provider=provider_name,
-        )
+        try:
+            tool_type = tool.get("type") or "builtin"
+            tool_label = tool.get("tool_label") or tool_name
+            tool_description = tool.get("tool_description", None)
+            extra_description = (tool.get("extra") or {}).get("description", None)
+            schemas = tool.get("schemas") or []
+            settings = tool.get("settings") or {}
 
-        llm_description = (
-            extra_description
-            if extra_description else tool_description
-            if tool_description else tool_label
-        )
-        description = ToolDescription(
-            human=I18nObject(en_US=llm_description),
-            llm=llm_description,
-        )
+            identity = AgentToolIdentity(
+                author="Dify",
+                name=tool_name,
+                label=I18nObject(en_US=tool_label),
+                provider=provider_name,
+            )
 
-        provider_type = ToolProviderType.BUILT_IN
-        if tool_type == "api":
-            provider_type = ToolProviderType.API
-        elif tool_type == "workflow":
-            provider_type = ToolProviderType.WORKFLOW
+            llm_description = (
+                extra_description
+                if extra_description else tool_description
+                if tool_description else tool_label
+            )
+            description = ToolDescription(
+                human=I18nObject(en_US=llm_description),
+                llm=llm_description,
+            )
 
-        parameters = []
-        for schema in schemas:
-            parameters.append(ToolParameter(**schema))
+            provider_type = ToolProviderType.BUILT_IN
+            if tool_type == "api":
+                provider_type = ToolProviderType.API
+            elif tool_type == "workflow":
+                provider_type = ToolProviderType.WORKFLOW
 
-        runtime_parameters = {}
-        for parameter_name, parameter_value in settings.items():
-            runtime_parameters[parameter_name] = parameter_value.get("value")
+            parameters = []
+            for schema in schemas:
+                try:
+                    parameters.append(ToolParameter(**normalize_parameter_schema(schema)))
+                except Exception:
+                    logging.exception("Skipping broken parameter schema of tool %s: %s", tool_name, schema)
 
-        tool_entity = ToolEntity(
-            identity=identity,
-            parameters=parameters,
-            description=description,
-            provider_type=provider_type,
-            runtime_parameters=runtime_parameters,
-        )
+            runtime_parameters = {}
+            for parameter_name, parameter_value in settings.items():
+                if isinstance(parameter_value, dict):
+                    runtime_parameters[parameter_name] = parameter_value.get("value")
+                else:
+                    runtime_parameters[parameter_name] = parameter_value
 
-        result.append(tool_entity)
+            tool_entity = ToolEntity(
+                identity=identity,
+                parameters=parameters,
+                description=description,
+                provider_type=provider_type,
+                runtime_parameters=runtime_parameters,
+            )
+
+            result.append(tool_entity)
+        except Exception:
+            logging.exception("Skipping tool %s: failed to load its config", tool_name)
 
     return result
 

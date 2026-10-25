@@ -102,11 +102,12 @@ English version: [README.md](../README.md)
 }
 ```
 
-## Изменения в этом форке (0.2.0)
+## Изменения в этом форке
 
 На основе [junjiem/mcp_compat_dify_tools](https://github.com/junjiem/dify-plugin-mcp_compat_dify_tools) 0.1.1. Исправлено:
 
-- Удалён debug-вывод, который печатался поверх JSON-ответа и ломал `tools/call` в plugin daemon ([#7](https://github.com/junjiem/dify-plugin-mcp_compat_dify_tools/issues/7), [#9](https://github.com/junjiem/dify-plugin-mcp_compat_dify_tools/issues/9)).
+- 0.2.1: `tools/list` больше не падает из-за неполных конфигов тулов — отсутствующие `type`/`tool_label` получают значения по умолчанию, сломанные схемы параметров пропускаются с записью в лог сервера, а не роняют весь список; полные трейсбеки ошибок `tools/list`/`tools/call` пишутся в лог сервера.
+- 0.2.0: удалён debug-вывод, который печатался поверх JSON-ответа и ломал `tools/call` в plugin daemon ([#7](https://github.com/junjiem/dify-plugin-mcp_compat_dify_tools/issues/7), [#9](https://github.com/junjiem/dify-plugin-mcp_compat_dify_tools/issues/9)).
 - Версия протокола теперь согласуется с клиентом (эхо `2024-11-05`, `2025-03-26`, `2025-06-18`, `2025-11-25`) вместо жёстко заданной `2024-11-05`.
 - `select`-параметры отдаются как `string` с `enum` — раньше в схему попадал невалидный для JSON Schema тип `select`, из-за чего строгие клиенты отвергали инструменты.
 - Незаданные settings-параметры теперь можно передавать при вызове ([#12](https://github.com/junjiem/dify-plugin-mcp_compat_dify_tools/issues/12)).
