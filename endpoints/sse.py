@@ -6,6 +6,8 @@ from typing import Mapping
 from dify_plugin import Endpoint
 from werkzeug import Request, Response
 
+from mcp_common import check_auth
+
 
 def create_sse_message(event, data):
     return f"event: {event}\ndata: {json.dumps(data) if isinstance(data, (dict, list)) else data}\n\n"
@@ -16,6 +18,10 @@ class SSEEndpoint(Endpoint):
         """
         Invokes the endpoint with the given request.
         """
+        unauthorized = check_auth(r, settings)
+        if unauthorized:
+            return unauthorized
+
         session_id = str(uuid.uuid4()).replace("-", "")
 
         def generate():

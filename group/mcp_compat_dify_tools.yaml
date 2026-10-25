@@ -5,6 +5,15 @@ settings:
     label:
       en_US: Tool list
       zh_Hans: 工具列表
+  - name: auth_token
+    type: secret-input
+    required: false
+    label:
+      en_US: Auth token
+      zh_Hans: 认证令牌
+    placeholder:
+      en_US: Optional. If set, clients must pass it via Authorization Bearer header, X-Api-Key header or ?token= query parameter
+      zh_Hans: 可选。设置后客户端必须通过 Authorization Bearer 头、X-Api-Key 头或 ?token= 查询参数传递
 endpoints:
   - endpoints/sse.yaml
   - endpoints/messages.yaml
