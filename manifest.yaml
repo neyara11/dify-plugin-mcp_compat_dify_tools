@@ -2,6 +2,8 @@ version: 0.2.0
 type: plugin
 author: junjiem
 name: mcp_compat_dify_tools
+repo: https://github.com/neyara11/dify-plugin-mcp_compat_dify_tools
+contact: neyara11@users.noreply.github.com
 label:
   en_US: MCP Compatible Dify Tools
   zh_Hans: MCP Compatible Dify Tools
@@ -31,6 +33,7 @@ meta:
     language: python
     version: "3.12"
     entrypoint: main
+  minimum_dify_version: "1.2.0"
 created_at: 2025-04-11T15:35:09.8828922+08:00
 privacy: PRIVACY.md
 verified: false
